@@ -1,9 +1,15 @@
 package com.library.controller;
 
 import com.library.model.User;
+import com.library.service.AuditLogService;
 import com.library.service.UserService;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,42 +18,163 @@ import java.util.List;
 @RequestMapping("/api/users")
 public class UserController {
 
-    private final UserService userService;
+	private final UserService userService;
+	private final AuditLogService auditLogService;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
+	public UserController(UserService userService, AuditLogService auditLogService) {
+		this.userService = userService;
+		this.auditLogService = auditLogService;
+	}
 
-    // GET all users
-    @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
-    }
+	// GET all users
+	@GetMapping
+	public ResponseEntity<List<User>> getAllUsers(HttpServletRequest request) {
+		try {
+			List<User> users = userService.getAllUsers();
 
-    // CREATE user
-    @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(userService.saveUser(user));
-    }
+			// Audit success
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), null, // requestBody (not
+																									// needed for GET)
+					users.toString(), // responseBody
+					HttpStatus.OK.value(), null, // errorCode
+					true // success
+			);
 
-    // GET user by ID
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable Long id) {
-        return userService.getUserById(id)
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("User with ID " + id + " not found"));
-    }
+			return ResponseEntity.ok(users);
 
-    // DELETE user
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id) {
-        boolean deleted = userService.deleteUser(id);
-        if (!deleted) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("User with ID " + id + " not found");
-        }
-        return ResponseEntity.ok("User with ID " + id + " deleted successfully");
-    }
+		} catch (Exception e) {
+			// Audit failure
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), null, // requestBody
+					e.getMessage(), // responseBody
+					HttpStatus.INTERNAL_SERVER_ERROR.value(), "USR-002", // custom error code
+					false // success
+			);
+
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
+	// CREATE user
+	@PostMapping
+	public ResponseEntity<User> createUser(@RequestBody User user, HttpServletRequest request) {
+		try {
+			User savedUser = userService.saveUser(user);
+
+			// Audit success
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), user.toString(), // requestBody
+					savedUser.toString(), // responseBody
+					HttpStatus.CREATED.value(), null, // errorCode
+					true // success
+			);
+
+			return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
+
+		} catch (Exception e) {
+			// Audit failure
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), user.toString(),
+					e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value(), "USR-001", // custom error code
+					false);
+
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
+	// GET user by ID
+	@GetMapping("/{id}")
+	public ResponseEntity<?> getUserById(@PathVariable Long id, HttpServletRequest request) {
+		try {
+			return userService.getUserById(id).<ResponseEntity<?>>map(user -> {
+				// Audit success
+				auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), "ID: " + id, // requestBody
+																												// (just
+																												// the
+																												// ID)
+						user.toString(), // responseBody
+						HttpStatus.OK.value(), null, // errorCode
+						true // success
+				);
+				return ResponseEntity.ok(user);
+			}).orElseGet(() -> {
+				// Audit "not found"
+				auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), "ID: " + id,
+						"User with ID " + id + " not found", HttpStatus.NOT_FOUND.value(), "USR-003", // custom error
+																										// code
+						false);
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User with ID " + id + " not found");
+			});
+		} catch (Exception e) {
+			// Audit failure
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), "ID: " + id,
+					e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value(), "USR-003-EX", // custom error code for
+																							// exception
+					false);
+
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
+	@PutMapping("/update")
+	public ResponseEntity<?> updateUserById(@RequestBody User user, HttpServletRequest request) {
+		try {
+			org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext()
+					.getAuthentication();
+			String currentUsername = authentication.getName();
+
+			boolean updated = userService.updateUser(user);
+
+			if (!updated) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body("User : " + user.getUserName() + " with ID : " + user.getId() + " not found");
+			}
+
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), user.toString(), // requestBody
+					user.toString(), // responseBody
+					HttpStatus.CREATED.value(), null, // errorCode
+					true // success
+			);
+
+		} catch (Exception e) {
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), user.toString(),
+					e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value(), "USR-001", // custom error code
+					false // success
+			);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Update failed");
+		}
+		return ResponseEntity
+				.ok("User : " + user.getUserName() + " with ID : " + user.getId() + " updated successfully");
+	}
+
+	// DELETE user
+	@DeleteMapping("/{id}")
+	public ResponseEntity<String> deleteUser(@PathVariable Long id, HttpServletRequest request) {
+		try {
+			boolean deleted = userService.deleteUser(id);
+
+			if (!deleted) {
+				// Audit "not found"
+				auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), "ID: " + id,
+						"User with ID " + id + " not found", HttpStatus.NOT_FOUND.value(), "USR-004", // custom error
+																										// code
+						false);
+
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User with ID " + id + " not found");
+			}
+
+			// Audit success
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), "ID: " + id,
+					"User with ID " + id + " deleted successfully", HttpStatus.OK.value(), null, true);
+
+			return ResponseEntity.ok("User with ID " + id + " deleted successfully");
+
+		} catch (Exception e) {
+			// Audit exception
+			auditLogService.log("UserService", request.getMethod(), request.getRequestURI(), "ID: " + id,
+					e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR.value(), "USR-004-EX", // custom error code for
+																							// exceptions
+					false);
+
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
 }

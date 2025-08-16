@@ -32,6 +32,31 @@ public class UserService {
         return userRepository.findById(id);
     }
 
+    public boolean updateUser(User updatedUser) {
+        return userRepository.findById(updatedUser.getId())
+                .map(existingUser -> {
+                    // Update fields
+                    existingUser.setUserName(updatedUser.getUserName());
+                    existingUser.setEmail(updatedUser.getEmail());
+
+                    // Encode password only if it's being changed
+                    if (updatedUser.getPassword() != null && !updatedUser.getPassword().isBlank()) {
+                        existingUser.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
+                    }
+
+                    // Set roles (assuming it's a collection type)
+                    if (updatedUser.getRoles() != null) {
+                        existingUser.setRoles(updatedUser.getRoles());
+                    }
+
+                    // Save updated entity
+                    userRepository.save(existingUser);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+
     public boolean deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
             return false;
