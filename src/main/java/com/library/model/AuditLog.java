@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
 @Entity
 @Table(name = "audit_log")
@@ -54,34 +53,4 @@ public class AuditLog {
         this.success = success;
         this.timestamp = LocalDateTime.now();
     }
-
-    // Getters & Setters
-    public Long getId() { return id; }
-
-    public String getServiceName() { return serviceName; }
-    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
-
-    public String getHttpMethod() { return httpMethod; }
-    public void setHttpMethod(String httpMethod) { this.httpMethod = httpMethod; }
-
-    public String getRequestUrl() { return requestUrl; }
-    public void setRequestUrl(String requestUrl) { this.requestUrl = requestUrl; }
-
-    public String getRequestBody() { return requestBody; }
-    public void setRequestBody(String requestBody) { this.requestBody = requestBody; }
-
-    public String getResponseBody() { return responseBody; }
-    public void setResponseBody(String responseBody) { this.responseBody = responseBody; }
-
-    public int getHttpStatusCode() { return httpStatusCode; }
-    public void setHttpStatusCode(int httpStatusCode) { this.httpStatusCode = httpStatusCode; }
-
-    public String getErrorCode() { return errorCode; }
-    public void setErrorCode(String errorCode) { this.errorCode = errorCode; }
-
-    public boolean isSuccess() { return success; }
-    public void setSuccess(boolean success) { this.success = success; }
-
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
 }
