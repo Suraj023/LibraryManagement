@@ -1,17 +1,20 @@
 package com.library.config;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
+import com.library.helper.DateUtils;
+import com.library.model.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import com.library.model.User;
-import savein.money.bnpl.merchant.api.helper.DateUtils;
 
-import java.security.Key;
-import java.security.SignatureException;
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,29 +44,26 @@ public class JwtService {
     }
 
     public String generateToken(Map<String,Object> extraClaims, User userEntity){
+        String subject = StringUtils.hasText(userEntity.getEmail()) ? userEntity.getEmail() : userEntity.getUserName();
+
         return Jwts
                 .builder()
-                .setClaims(extraClaims)
-                .setSubject(StringUtils.hasLength(userEntity.getMobile()) ? userEntity.getMobile()
-                        : userEntity.getLoginEmail())
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(DateUtils.addMinutes(new Date(),jwtExpiryMinutes))
-                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .claims(extraClaims)
+                .subject(subject)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(DateUtils.addMinutes(new Date(),jwtExpiryMinutes))
+                .signWith(getSignInKey())
                 .compact();
     }
 
     public boolean validateJwtToken(String authToken) {
         try {
-            Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(authToken);
+            Jwts.parser().verifyWith(getSignInKey()).build().parseSignedClaims(authToken);
             return true;
-        } catch (SignatureException e) {
-            log.error("Invalid JWT signature: {}", e.getMessage());
-        } catch (MalformedJwtException e) {
-            log.error("Invalid JWT token: {}", e.getMessage());
         } catch (ExpiredJwtException e) {
             log.error("JWT token is expired: {}", e.getMessage());
-        } catch (UnsupportedJwtException e) {
-            log.error("JWT token is unsupported: {}", e.getMessage());
+        } catch (JwtException e) {
+            log.error("Invalid JWT token: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("JWT claims string is empty: {}", e.getMessage());
         }
@@ -71,22 +71,24 @@ public class JwtService {
         return false;
     }
 
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
 
     private Claims extractAllClaims(String token){
         return Jwts
-                .parserBuilder()
-                .setSigningKey(getSignInKey())
+                .parser()
+                .verifyWith(getSignInKey())
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
-    private Key getSignInKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-        return Keys.hmacShaKeyFor(keyBytes);
+    private SecretKey getSignInKey() {
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (IllegalArgumentException exception) {
+            // Fallback for plain text secrets from local/dev configurations.
+            return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        }
     }
 
 }
