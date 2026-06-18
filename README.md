@@ -46,37 +46,37 @@ A production-ready **RESTful Library Management System** built with Spring Boot 
 
 ```
                         ┌─────────────────────────────────────────────┐
-                        │            Spring Boot Application           │
+                        │            Spring Boot Application          │
                         │                                             │
-  HTTP Request          │  ┌─────────────┐      ┌─────────────────┐  │
-─────────────────────►  │  │ API Gateway │─────►│  JWT Filter     │  │
-                        │  │ (Rate Limit)│      │ (Spring Security)│  │
-                        │  └─────────────┘      └────────┬────────┘  │
+  HTTP Request          │  ┌─────────────┐      ┌─────────────────┐   │
+─────────────────────►  │  │ API Gateway │─────►│  JWT Filter     │   │
+                        │  │ (Rate Limit)│      │(Spring Security)│   │
+                        │  └─────────────┘      └────────┬────────┘   │
                         │                                │            │
                         │                    ┌───────────▼──────────┐ │
-                        │                    │      Controllers      │ │
-                        │                    │  /api/books           │ │
-                        │                    │  /api/users           │ │
+                        │                    │      Controllers     │ │
+                        │                    │  /api/books          │ │
+                        │                    │  /api/users          │ │
                         │                    └───────────┬──────────┘ │
                         │                                │            │
                         │              ┌─────────────────▼──────────┐ │
-                        │              │        Service Layer        │ │
-                        │              └──────┬──────────────────────┘ │
-                        │                     │                        │
+                        │              │        Service Layer       │ │
+                        │              └──────┬─────────────────────┘ │
+                        │                     │                       │
                         │         ┌───────────▼───┐   ┌────────────┐  │
-                        │         │  JPA/Hibernate │   │ Audit Log  │  │
+                        │         │ JPA/Hibernate │   │ Audit Log  │  │
                         │         └───────┬───────┘   │  Producer  │  │
-                        │                 │            └─────┬──────┘  │
-                        └─────────────────┼──────────────────┼─────────┘
-                                          │                  │
+                        │                 │           └─────┬──────┘  │
+                        └─────────────────┼─────────────────┼─────────┘
+                                          │                 │
                                ┌──────────▼──────┐   ┌──────▼──────────┐
-                               │   MySQL Database │   │  Apache Kafka   │
-                               │   (library_db)   │   │  (audit-logs)   │
+                               │  MySQL Database │   │  Apache Kafka   │
+                               │  (library_db)   │   │  (audit-logs)   │
                                └─────────────────┘   └──────┬──────────┘
                                                              │
                                                     ┌────────▼────────┐
-                                                    │  Audit Consumer  │
-                                                    │  → Saves to DB   │
+                                                    │  Audit Consumer │
+                                                    │  → Saves to DB  │
                                                     └─────────────────┘
 ```
 
