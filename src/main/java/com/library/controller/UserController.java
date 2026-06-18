@@ -4,6 +4,11 @@ import com.library.model.User;
 import com.library.service.AuditLogService;
 import com.library.service.UserService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
@@ -16,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
+@Tag(name = "Users", description = "APIs for managing library users")
 public class UserController {
 
 	private final UserService userService;
@@ -26,7 +32,8 @@ public class UserController {
 		this.auditLogService = auditLogService;
 	}
 
-	// GET all users
+	@Operation(summary = "Get all users", description = "Returns a list of all registered users")
+	@ApiResponse(responseCode = "200", description = "Users retrieved successfully")
 	@GetMapping
 	public ResponseEntity<List<User>> getAllUsers(HttpServletRequest request) {
 		try {
@@ -54,7 +61,11 @@ public class UserController {
 		}
 	}
 
-	// CREATE user
+	@Operation(summary = "Create a user", description = "Registers a new user in the system")
+	@ApiResponses({
+		@ApiResponse(responseCode = "201", description = "User created successfully"),
+		@ApiResponse(responseCode = "500", description = "Internal server error")
+	})
 	@PostMapping
 	public ResponseEntity<User> createUser(@RequestBody User user, HttpServletRequest request) {
 		try {
@@ -79,9 +90,13 @@ public class UserController {
 		}
 	}
 
-	// GET user by ID
+	@Operation(summary = "Get user by ID", description = "Returns a single user by their ID")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "User found"),
+		@ApiResponse(responseCode = "404", description = "User not found")
+	})
 	@GetMapping("/{id}")
-	public ResponseEntity<?> getUserById(@PathVariable Long id, HttpServletRequest request) {
+	public ResponseEntity<?> getUserById(@Parameter(description = "ID of the user") @PathVariable Long id, HttpServletRequest request) {
 		try {
 			return userService.getUserById(id).<ResponseEntity<?>>map(user -> {
 				// Audit success
@@ -113,6 +128,11 @@ public class UserController {
 		}
 	}
 
+	@Operation(summary = "Update a user", description = "Updates an existing user's information")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "User updated successfully"),
+		@ApiResponse(responseCode = "404", description = "User not found")
+	})
 	@PutMapping("/update")
 	public ResponseEntity<?> updateUserById(@RequestBody User user, HttpServletRequest request) {
 		try {
@@ -144,9 +164,13 @@ public class UserController {
 				.ok("User : " + user.getUserName() + " with ID : " + user.getId() + " updated successfully");
 	}
 
-	// DELETE user
+	@Operation(summary = "Delete a user", description = "Deletes a user from the system by their ID")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "User deleted successfully"),
+		@ApiResponse(responseCode = "404", description = "User not found")
+	})
 	@DeleteMapping("/{id}")
-	public ResponseEntity<String> deleteUser(@PathVariable Long id, HttpServletRequest request) {
+	public ResponseEntity<String> deleteUser(@Parameter(description = "ID of the user to delete") @PathVariable Long id, HttpServletRequest request) {
 		try {
 			boolean deleted = userService.deleteUser(id);
 

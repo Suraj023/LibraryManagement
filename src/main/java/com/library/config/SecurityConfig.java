@@ -57,8 +57,9 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Disable session
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/users/**").permitAll() // Protected
-                .requestMatchers("/api/books/**").permitAll() // Public
+                .requestMatchers("/api/users/**").permitAll()
+                .requestMatchers("/api/books/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

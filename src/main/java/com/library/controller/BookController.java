@@ -4,6 +4,11 @@ import com.library.model.Book;
 import com.library.service.AuditLogService;
 import com.library.service.BookService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.http.HttpStatus;
@@ -14,6 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/books")
+@Tag(name = "Books", description = "APIs for managing library books")
 public class BookController {
 
 	private final BookService bookService;
@@ -24,7 +30,8 @@ public class BookController {
 		this.auditLogService = auditLogService;
 	}
 
-	// GET all books
+	@Operation(summary = "Get all books", description = "Returns a list of all books in the library")
+	@ApiResponse(responseCode = "200", description = "Books retrieved successfully")
 	@GetMapping
 	public ResponseEntity<List<Book>> getAllBooks(HttpServletRequest request) {
 		try {
@@ -44,7 +51,11 @@ public class BookController {
 		}
 	}
 
-	// CREATE book
+	@Operation(summary = "Create a book", description = "Adds a new book to the library")
+	@ApiResponses({
+		@ApiResponse(responseCode = "201", description = "Book created successfully"),
+		@ApiResponse(responseCode = "500", description = "Internal server error")
+	})
 	@PostMapping
 	public ResponseEntity<Book> createBook(@RequestBody Book book, HttpServletRequest request) {
 		try {
@@ -64,9 +75,13 @@ public class BookController {
 		}
 	}
 
-	// GET book by ID
+	@Operation(summary = "Get book by ID", description = "Returns a single book by its ID")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Book found"),
+		@ApiResponse(responseCode = "404", description = "Book not found")
+	})
 	@GetMapping("/{id}")
-	public ResponseEntity<?> getBookById(@PathVariable Long id, HttpServletRequest request) {
+	public ResponseEntity<?> getBookById(@Parameter(description = "ID of the book") @PathVariable Long id, HttpServletRequest request) {
 		try {
 			return bookService.getBookById(id).<ResponseEntity<?>>map(book -> {
 				// Audit success
@@ -88,9 +103,13 @@ public class BookController {
 		}
 	}
 
-	// DELETE book
+	@Operation(summary = "Delete a book", description = "Deletes a book from the library by its ID")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "Book deleted successfully"),
+		@ApiResponse(responseCode = "404", description = "Book not found")
+	})
 	@DeleteMapping("/{id}")
-	public ResponseEntity<String> deleteBook(@PathVariable Long id, HttpServletRequest request) {
+	public ResponseEntity<String> deleteBook(@Parameter(description = "ID of the book to delete") @PathVariable Long id, HttpServletRequest request) {
 		try {
 			boolean deleted = bookService.deleteBook(id);
 
