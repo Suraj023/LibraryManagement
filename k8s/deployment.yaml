@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: library-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: library-app
+  template:
+    metadata:
+      labels:
+        app: library-app
+    spec:
+      containers:
+        - name: library-app
+          image: library-management:latest
+          # Never = use the locally loaded image; change to Always when pulling from a registry
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          # Pull all keys from ConfigMap and Secret as env vars
+          envFrom:
+            - configMapRef:
+                name: library-config
+            - secretRef:
+                name: library-secret
+          # Spring Boot Actuator is not on the classpath, so TCP socket probes are used.
+          # Swap these for httpGet /actuator/health once Actuator is added.
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 20
