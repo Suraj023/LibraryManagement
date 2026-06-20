@@ -5,10 +5,11 @@
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-blue?style=flat-square&logo=mysql)
 ![Kafka](https://img.shields.io/badge/Apache%20Kafka-3.x-black?style=flat-square&logo=apachekafka)
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=flat-square&logo=docker)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Minikube-326CE5?style=flat-square&logo=kubernetes)
 ![CI](https://img.shields.io/github/actions/workflow/status/Suraj023/LibraryManagement/ci.yml?style=flat-square&label=CI)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
 
-A production-ready **RESTful Library Management System** built with Spring Boot 3, featuring JWT-based authentication, role-based access control, async audit logging via Apache Kafka, a custom API Gateway with rate limiting, and full Docker support.
+A production-ready **RESTful Library Management System** built with Spring Boot 3, featuring JWT-based authentication, role-based access control, async audit logging via Apache Kafka, a custom API Gateway with rate limiting, full Docker support, and Kubernetes manifests for local cluster deployment.
 
 ---
 
@@ -19,7 +20,8 @@ A production-ready **RESTful Library Management System** built with Spring Boot 
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
-- [Running with Docker](#running-with-docker)
+- [Running with Docker Compose](#running-with-docker-compose)
+- [Running with Kubernetes](#running-with-kubernetes)
 - [API Reference](#api-reference)
 - [Swagger UI](#swagger-ui)
 - [Configuration](#configuration)
@@ -36,6 +38,8 @@ A production-ready **RESTful Library Management System** built with Spring Boot 
 - **Custom API Gateway** — centralized routing with per-route rate limiting (Bucket4j)
 - **Async Audit Logging** — every API call is published to a Kafka topic and persisted to the database
 - **Dockerized** — multi-stage Dockerfile keeps the final image lean (JRE only)
+- **Docker Compose** — one command spins up app + MySQL + Kafka + Zookeeper
+- **Kubernetes Ready** — manifests for Deployment, Service, ConfigMap, Secret, and MySQL StatefulSet
 - **GitHub Actions CI/CD** — automated build, test, and Docker image validation on every push
 - **Swagger / OpenAPI 3** — interactive API docs with JWT authorization support
 - **Auto DDL** — Hibernate creates/updates schema automatically on startup
@@ -96,6 +100,7 @@ A production-ready **RESTful Library Management System** built with Spring Boot 
 | API Docs | SpringDoc OpenAPI 3 (Swagger UI) |
 | Build Tool | Maven |
 | Containerization | Docker (multi-stage build) |
+| Orchestration | Kubernetes (Minikube for local) |
 | CI/CD | GitHub Actions |
 | Utilities | Lombok, Joda-Time |
 
@@ -104,44 +109,51 @@ A production-ready **RESTful Library Management System** built with Spring Boot 
 ## Project Structure
 
 ```
-src/
-├── main/
-│   ├── java/com/library/
-│   │   ├── config/
-│   │   │   ├── JwtAuthenticationFilter.java   # JWT validation per request
-│   │   │   ├── JwtService.java                # Token generation & parsing
-│   │   │   ├── OpenApiConfig.java             # Swagger configuration
-│   │   │   ├── SecurityConfig.java            # Security filter chain & rules
-│   │   │   └── UserConfig.java                # User bean configuration
-│   │   ├── controller/
-│   │   │   ├── BookController.java            # Book CRUD endpoints
-│   │   │   └── UserController.java            # User CRUD endpoints
-│   │   ├── gateway/
-│   │   │   └── RouteDefinition.java           # API Gateway route model
-│   │   ├── helper/
-│   │   │   └── DateUtils.java
-│   │   ├── kafka/
-│   │   │   ├── consumer/AuditLogConsumer.java # Consumes & persists audit events
-│   │   │   └── producer/AuditLogProducer.java # Publishes audit events
-│   │   ├── model/
-│   │   │   ├── AuditLog.java                  # Audit log entity
-│   │   │   ├── Book.java                      # Book entity
-│   │   │   └── User.java                      # User entity with roles
-│   │   ├── repository/
-│   │   │   ├── AuditLogRepository.java
-│   │   │   ├── BookRepository.java
-│   │   │   └── UserRepository.java
-│   │   └── service/
-│   │       ├── AuditLogService.java
-│   │       ├── BookService.java
-│   │       ├── UserDetailsServiceImpl.java
-│   │       └── UserService.java
-│   └── resources/
-│       └── application.properties
-├── test/
-│   └── java/com/library/
-│       └── LibraryApplicationTests.java
-├── Dockerfile
+├── src/
+│   ├── main/
+│   │   ├── java/com/library/
+│   │   │   ├── config/
+│   │   │   │   ├── JwtAuthenticationFilter.java   # JWT validation per request
+│   │   │   │   ├── JwtService.java                # Token generation & parsing
+│   │   │   │   ├── OpenApiConfig.java             # Swagger configuration
+│   │   │   │   ├── SecurityConfig.java            # Security filter chain & rules
+│   │   │   │   └── UserConfig.java                # User bean configuration
+│   │   │   ├── controller/
+│   │   │   │   ├── BookController.java            # Book CRUD endpoints
+│   │   │   │   └── UserController.java            # User CRUD endpoints
+│   │   │   ├── gateway/
+│   │   │   │   └── RouteDefinition.java           # API Gateway route model
+│   │   │   ├── helper/
+│   │   │   │   └── DateUtils.java
+│   │   │   ├── kafka/
+│   │   │   │   ├── consumer/AuditLogConsumer.java # Consumes & persists audit events
+│   │   │   │   └── producer/AuditLogProducer.java # Publishes audit events
+│   │   │   ├── model/
+│   │   │   │   ├── AuditLog.java
+│   │   │   │   ├── Book.java
+│   │   │   │   └── User.java
+│   │   │   ├── repository/
+│   │   │   │   ├── AuditLogRepository.java
+│   │   │   │   ├── BookRepository.java
+│   │   │   │   └── UserRepository.java
+│   │   │   └── service/
+│   │   │       ├── AuditLogService.java
+│   │   │       ├── BookService.java
+│   │   │       ├── UserDetailsServiceImpl.java
+│   │   │       └── UserService.java
+│   │   └── resources/
+│   │       └── application.properties             # Env-var driven config
+│   └── test/
+│       └── java/com/library/
+│           └── LibraryApplicationTests.java
+├── k8s/                                           # Kubernetes manifests
+│   ├── configmap.yaml                             # Non-sensitive config
+│   ├── secret.yaml                                # DB password, JWT secret
+│   ├── mysql-statefulset.yaml                     # MySQL StatefulSet + PVC
+│   ├── deployment.yaml                            # Spring Boot app Deployment
+│   └── service.yaml                               # NodePort Service
+├── Dockerfile                                     # Multi-stage build
+├── docker-compose.yml                             # Full local stack
 ├── .github/workflows/ci.yml
 └── pom.xml
 ```
@@ -158,7 +170,8 @@ src/
 | Maven | 3.8+ |
 | MySQL | 8.0+ |
 | Apache Kafka | 3.x |
-| Docker | 24+ (optional) |
+| Docker | 24+ |
+| Minikube | latest (for Kubernetes) |
 
 ### 1. Clone the Repository
 
@@ -173,7 +186,7 @@ cd LibraryManagement
 CREATE DATABASE library_db;
 ```
 
-### 3. Start Kafka (local)
+### 3. Start Kafka (local binary)
 
 ```bash
 # Start Zookeeper
@@ -183,18 +196,7 @@ bin/zookeeper-server-start.sh config/zookeeper.properties
 bin/kafka-server-start.sh config/server.properties
 ```
 
-### 4. Configure Environment
-
-Set the following environment variables or update `application.properties`:
-
-```bash
-export DB_URL=jdbc:mysql://localhost:3306/library_db
-export DB_USERNAME=root
-export DB_PASSWORD=yourpassword
-export JWT_SECRET=yourBase64EncodedSecret
-```
-
-### 5. Build and Run
+### 4. Build and Run
 
 ```bash
 ./mvnw clean package -DskipTests
@@ -205,65 +207,103 @@ The application starts on **`http://localhost:8080`**
 
 ---
 
-## Running with Docker
+## Running with Docker Compose
 
-The project uses a **multi-stage Dockerfile** — the build stage compiles with Maven and the runtime stage uses a lean JRE image.
-
-### Build the Image
+The easiest way to run the full stack locally — app, MySQL, Kafka, and Zookeeper all start together with a single command.
 
 ```bash
+docker-compose up --build
+```
+
+What gets started:
+
+| Container | Port |
+|-----------|------|
+| `library-app` | `8080` |
+| `library-mysql` | `3306` |
+| `library-kafka` | `9092` (inter-container), `29092` (host) |
+| `library-zookeeper` | internal only |
+
+The app waits for MySQL's healthcheck to pass before starting, so startup order is handled automatically.
+
+To stop and remove all containers:
+
+```bash
+docker-compose down
+```
+
+To also remove the MySQL data volume:
+
+```bash
+docker-compose down -v
+```
+
+---
+
+## Running with Kubernetes
+
+Kubernetes manifests live in the `k8s/` folder. These are designed for **Minikube** (local cluster).
+
+### Prerequisites
+
+```bash
+# Install Minikube
+# https://minikube.sigs.k8s.io/docs/start/
+
+minikube start
+```
+
+### 1. Build the image into Minikube's Docker daemon
+
+```bash
+# Point your shell's Docker CLI at Minikube's daemon
+eval $(minikube docker-env)
+
+# Build the image (Minikube can now see it without a registry)
 docker build -t library-management:latest .
 ```
 
-### Run with Docker
+### 2. Apply manifests
+
+Apply in this order — Secret and ConfigMap must exist before the Deployment reads them.
 
 ```bash
-docker run -d \
-  --name library-app \
-  -p 8080:8080 \
-  -e DB_URL=jdbc:mysql://host.docker.internal:3306/library_db \
-  -e DB_USERNAME=root \
-  -e DB_PASSWORD=yourpassword \
-  -e JWT_SECRET=yourBase64EncodedSecret \
-  library-management:latest
+kubectl apply -f k8s/secret.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/mysql-statefulset.yaml
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
 ```
 
-### Run Full Stack with Docker Compose
-
-Create a `docker-compose.yml` at the project root:
-
-```yaml
-version: '3.8'
-services:
-  app:
-    build: .
-    ports:
-      - "8080:8080"
-    environment:
-      DB_URL: jdbc:mysql://mysql:3306/library_db
-      DB_USERNAME: root
-      DB_PASSWORD: root
-      JWT_SECRET: U3ByaW5nQm9vdExpYnJhcnlNYW5hZ2VtZW50SldUU2VjcmV0S2V5MTIzNDU2Nzg5MA==
-    depends_on:
-      - mysql
-
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: library_db
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-
-volumes:
-  mysql_data:
-```
+### 3. Verify everything is running
 
 ```bash
-docker-compose up -d
+# Watch pods come up (Ctrl+C when all are Running)
+kubectl get pods -w
+
+# Check the MySQL StatefulSet's PersistentVolumeClaim
+kubectl get pvc
 ```
+
+### 4. Open the app
+
+```bash
+minikube service library-app
+```
+
+This prints and opens the correct `http://<minikube-ip>:30080` URL automatically.
+
+### Manifest overview
+
+| File | What it does |
+|------|-------------|
+| `configmap.yaml` | Non-sensitive env vars: `DB_HOST`, `DB_NAME`, `KAFKA_BOOTSTRAP_SERVERS`, etc. |
+| `secret.yaml` | Sensitive values: `DB_PASSWORD`, `JWT_SECRET` (stored as K8s Secret) |
+| `mysql-statefulset.yaml` | MySQL 8.0 as a StatefulSet with a 1Gi PersistentVolumeClaim |
+| `deployment.yaml` | Spring Boot app with liveness/readiness probes |
+| `service.yaml` | NodePort on `30080` — change to `ClusterIP` when adding Ingress |
+
+> **Note:** Kafka is not included in these manifests yet. The ConfigMap disables Kafka consumers on startup (`SPRING_KAFKA_LISTENER_AUTO_STARTUP=false`) so the app starts cleanly. Kafka will be added via Helm in a future phase.
 
 ---
 
@@ -335,16 +375,23 @@ Interactive API documentation is available once the application is running:
 
 ## Configuration
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `DB_URL` | `jdbc:mysql://127.0.0.1:3306/library_db` | Database JDBC URL |
+All configuration is environment-variable driven. The app has sensible local defaults so it runs without any env vars set.
+
+| Environment Variable | Default | Description |
+|----------------------|---------|-------------|
+| `DB_HOST` | `127.0.0.1` | MySQL hostname |
+| `DB_PORT` | `3306` | MySQL port |
+| `DB_NAME` | `library_db` | Database name |
 | `DB_USERNAME` | `root` | Database username |
 | `DB_PASSWORD` | `root` | Database password |
-| `JWT_SECRET` | *(base64 key)* | JWT signing secret |
-| `b2b.app.jwtExpiryMinutes` | `60` | Token validity in minutes |
+| `JWT_SECRET` | *(base64 key)* | JWT signing secret (Base64-encoded) |
+| `JWT_EXPIRY_MINUTES` | `60` | Token validity in minutes |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker address |
 | `gateway.routes.users.rateLimit` | `30` | Max requests/min for `/api/users` |
 | `gateway.routes.books.rateLimit` | `60` | Max requests/min for `/api/books` |
-| `KAFKA_BROKERS` | `localhost:9092` | Kafka bootstrap servers |
+
+In Docker Compose, these are set in `docker-compose.yml`.
+In Kubernetes, non-sensitive values come from `k8s/configmap.yaml` and secrets from `k8s/secret.yaml`.
 
 ---
 
@@ -380,13 +427,17 @@ Pipeline file: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 - [x] Async audit logging with Apache Kafka
 - [x] Custom API Gateway with rate limiting
 - [x] Docker multi-stage build
+- [x] Docker Compose (app + MySQL + Kafka + Zookeeper)
 - [x] GitHub Actions CI/CD
 - [x] Swagger / OpenAPI 3 documentation
-- [ ] AWS Cloud deployment (EC2 + RDS)
-- [ ] Managed Kafka via AWS MSK
-- [ ] VPC with public/private subnet isolation
-- [ ] Kubernetes (EKS) deployment
-- [ ] Distributed tracing with Spring Actuator + Micrometer
+- [x] Kubernetes manifests (Minikube — Deployment, Service, ConfigMap, Secret, StatefulSet)
+- [ ] Kafka on Kubernetes via Helm (Bitnami)
+- [ ] Ingress controller replacing NodePort
+- [ ] Horizontal Pod Autoscaler
+- [ ] Cloud deployment — GKE / EKS / AKS
+- [ ] CI/CD pipeline deploys to cloud cluster (GitOps / ArgoCD)
+- [ ] Observability — Prometheus + Grafana
+- [ ] Distributed tracing with Micrometer
 - [ ] Refresh token support
 
 ---
@@ -400,4 +451,4 @@ Pipeline file: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
 ---
 
-> Built with Spring Boot 3 · Designed for production · Ready for the cloud
+> Built with Spring Boot 3 · Containerized with Docker · Orchestrated with Kubernetes
